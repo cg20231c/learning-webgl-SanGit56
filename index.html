@@ -15,6 +15,16 @@
         // Initialize WebGL context
         const gl = canvas.getContext('webgl');
 
+        function resizer()
+        {
+            canvas.width = window.innerWidth - 20;
+            canvas.height = window.innerHeight - 20;
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        }
+
+        window.addEventListener('resize',resizer);
+        resizer();
+
         // Define cube vertices
         const cubeVertices = new Float32Array([
             // Front face
@@ -56,31 +66,31 @@
             1.0, 0.0, 0.0, 1.0,
             1.0, 0.0, 0.0, 1.0,
             1.0, 0.0, 0.0, 1.0,
-            // Back face (Yellow)
-            1.0, 1.0, 0.0, 1.0,
-            1.0, 1.0, 0.0, 1.0,
-            1.0, 1.0, 0.0, 1.0,
-            1.0, 1.0, 0.0, 1.0,
-            // Left face (Orange)
-            1.0, 0.5, 0.0, 1.0,
-            1.0, 0.5, 0.0, 1.0,
-            1.0, 0.5, 0.0, 1.0,
-            1.0, 0.5, 0.0, 1.0,
-            // Right face (Green)
+            // Back face (Green)
             0.0, 1.0, 0.0, 1.0,
             0.0, 1.0, 0.0, 1.0,
             0.0, 1.0, 0.0, 1.0,
             0.0, 1.0, 0.0, 1.0,
-            // Top face (Blue)
+            // Left face (Blue)
             0.0, 0.0, 1.0, 1.0,
             0.0, 0.0, 1.0, 1.0,
             0.0, 0.0, 1.0, 1.0,
             0.0, 0.0, 1.0, 1.0,
-            // Bottom face (White)
+            // Right face (Yellow)
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            // Top face (White)
             1.0, 1.0, 1.0, 1.0,
             1.0, 1.0, 1.0, 1.0,
             1.0, 1.0, 1.0, 1.0,
             1.0, 1.0, 1.0, 1.0,
+            // Bottom face (Orange)
+            1.0, 0.5, 0.0, 1.0,
+            1.0, 0.5, 0.0, 1.0,
+            1.0, 0.5, 0.0, 1.0,
+            1.0, 0.5, 0.0, 1.0,
         ]);
 
         // Define cube faces (using indices)
@@ -99,34 +109,32 @@
             attribute vec4 a_color;
             varying vec4 v_color;
             uniform mat4 u_viewprojectionMatrix;
-            uniform float u_d;
+            uniform vec2 u_d;
+            uniform mat4 u_rotateZ;
+            uniform float u_angle;
 
             void main() {
                 mat4 translate = mat4(
                     1.0, 0.0, 0.0, 0.0,
                     0.0, 1.0, 0.0, 0.0,
                     0.0, 0.0, 1.0, 0.0,
-                    u_d, u_d, u_d, 1.0
+                    u_d.x, 0.0, u_d.y, 1.0
                 );
-                
-                float sind = sin(u_d);
-                float cosd = cos(u_d);
-
+                float sind = sin(u_angle);
+                float cosd = cos(u_angle);
                 mat4 rotateX = mat4(
                     1.0, 0.0, 0.0, 0.0,
                     0.0, cosd, sind, 0.0,
                     0.0, -sind, cosd, 0.0,
                     0.0, 0.0, 0.0, 1.0
                 );
-
                 mat4 rotateY = mat4(
                     cosd, 0.0, -sind, 0.0,
                     0.0, 1.0, 0.0, 0.0,
                     sind, 0.0, cosd, 0.0,
                     0.0, 0.0, 0.0, 1.0
                 );
-
-                gl_Position = u_viewprojectionMatrix * rotateY * rotateX * a_position;
+                gl_Position = u_viewprojectionMatrix * translate * u_rotateZ * rotateY * rotateX * a_position;
                 v_color = a_color;
             }
         `;
@@ -212,12 +220,44 @@
         gl.viewport(0, 0, canvas.width, canvas.height);
         
         // Variable for animation
-        let d = 0;
+        let angle = 0.0;
+        const angleUniformLocation = gl.getUniformLocation(program, 'u_angle');
+        let rotateZMatrix = mat4.create();
+        const traslationSpeed = 0.1;
+
+        // Transformation matrix
+        const rotateZUniformLocation = gl.getUniformLocation(program, 'u_rotateZ');
+
+        // Capture the event from the keyboard
+        let d = [0.0, 0.0];
         const dUniformLocation = gl.getUniformLocation(program, 'u_d');
+        document.addEventListener('keydown', (event) => {
+            const key = event.key;
+            switch (key) {
+                case 'ArrowUp':
+                    d[1] -= traslationSpeed; // Move forward
+                    gl.uniform2fv(dUniformLocation, d);
+                    break;
+                case 'ArrowDown':
+                    d[1] += traslationSpeed; // Move backward
+                    gl.uniform2fv(dUniformLocation, d);
+                    break;
+                case 'ArrowLeft':
+                    d[0] -= traslationSpeed; // Move left
+                    gl.uniform2fv(dUniformLocation, d);
+                    break;
+                case 'ArrowRight':
+                    d[0] += traslationSpeed; // Move right
+                    gl.uniform2fv(dUniformLocation, d);
+                    break;
+            }
+        });
 
         function render() {
-            d += 0.01;
-            gl.uniform1f(dUniformLocation, d);
+            angle += 0.01;
+            gl.uniform1f(angleUniformLocation, angle);
+            mat4.rotateZ(rotateZMatrix, rotateZMatrix, 0.01);
+            gl.uniformMatrix4fv(rotateZUniformLocation, false, rotateZMatrix);
 
             // Clear canvas
             gl.clear(gl.COLOR_BUFFER_BIT);
