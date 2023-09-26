@@ -6,36 +6,124 @@
     <title>WebGL Application</title>
 </head>
 <body>
-    <canvas id="glCanvas" width="800" height="600"></canvas>
+    <canvas id="glCanvas" width="800" height="600"></canvas><!-- Include the gl-matrix library from cdnjs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.4.0/gl-matrix.js"></script>
     <script>
-        // Step 1: Set up the canvas
+        // Set up the canvas
         const canvas = document.getElementById('glCanvas');
 
-        // Step 2: Initialize WebGL context
+        // Initialize WebGL context
         const gl = canvas.getContext('webgl');
 
-        // Step 3: Compile shaders
+        // Define cube vertices
+        const cubeVertices = new Float32Array([
+            // Front face
+            -1.0, -1.0,  1.0,
+             1.0, -1.0,  1.0,
+             1.0,  1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            // Back face
+            -1.0, -1.0, -1.0,
+             1.0, -1.0, -1.0,
+             1.0,  1.0, -1.0,
+            -1.0,  1.0, -1.0,
+            // Left face
+            -1.0, -1.0, -1.0,
+            -1.0, -1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            -1.0,  1.0, -1.0,
+            // Right face
+            1.0, -1.0, -1.0,
+            1.0, -1.0,  1.0,
+            1.0,  1.0,  1.0,
+            1.0,  1.0, -1.0,
+            // Top face
+            -1.0,  1.0, -1.0,
+            1.0,  1.0, -1.0,
+            1.0,  1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            // Bottom face
+            -1.0, -1.0, -1.0,
+            1.0, -1.0, -1.0,
+            1.0, -1.0,  1.0,
+            -1.0, -1.0,  1.0,
+        ]);
+
+        // Define Rubik's Cube colors for each face
+        const cubeColors = new Float32Array([
+            // Front face (Red)
+            1.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 0.0, 1.0,
+            // Back face (Green)
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            // Left face (Blue)
+            0.0, 0.0, 1.0, 1.0,
+            0.0, 0.0, 1.0, 1.0,
+            0.0, 0.0, 1.0, 1.0,
+            0.0, 0.0, 1.0, 1.0,
+            // Right face (Yellow)
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 1.0,
+            // Top face (White)
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0,
+            // Bottom face (Orange)
+            1.0, 0.5, 0.0, 1.0,
+            1.0, 0.5, 0.0, 1.0,
+            1.0, 0.5, 0.0, 1.0,
+            1.0, 0.5, 0.0, 1.0,
+        ]);
+
+        // Define cube faces (using indices)
+        const cubeIndices = new Uint16Array([
+            0, 1, 2, 0, 2, 3,   // Front face
+            4, 5, 6, 4, 6, 7,   // Back face
+            8, 9, 10, 8, 10, 11,   // Left face
+            12, 13, 14, 12, 14, 15,   // Right face
+            16, 17, 18, 16, 18, 19,   // Top face
+            20, 21, 22, 20, 22, 23    // Bottom face
+        ]);
+
+        // Define vertex shader source code
         const vertexShaderSource = `
-            // Vertex shader code (GLSL)
-            attribute vec2 a_position;
+            attribute vec4 a_position;
+            attribute vec4 a_color;
+            varying vec4 v_color;
+            uniform mat4 u_viewprojectionMatrix;
+            uniform float u_d;
+
             void main() {
-                // Transform vertex position
-                gl_Position = vec4(a_position, 0.0, 1.0);
+                mat4 translate = mat4(
+                    1.0, 0.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0,
+                    u_d, u_d, u_d, 1.0
+                );
+                gl_Position = u_viewprojectionMatrix * translate * a_position;
+                v_color = a_color;
             }
         `;
 
+        // Define fragment shader source code
         const fragmentShaderSource = `
-            // Fragment shader code (GLSL)
             precision mediump float;
-            uniform float u_time;
+            varying vec4 v_color;
+
             void main() {
-                vec4 redColor = vec4(0.588235, 0.0, 0.094118, 1.0);
-                vec4 blueColor = vec4(0.0, 0.588235, 0.494118, 1.0);
-                vec4 interpolatedColor = mix(redColor, blueColor, u_time);
-                gl_FragColor = interpolatedColor;
+                gl_FragColor = v_color;
             }
         `;
 
+        // Compile and link shaders
         const vertexShader = gl.createShader(gl.VERTEX_SHADER);
         gl.shaderSource(vertexShader, vertexShaderSource);
         gl.compileShader(vertexShader);
@@ -44,48 +132,78 @@
         gl.shaderSource(fragmentShader, fragmentShaderSource);
         gl.compileShader(fragmentShader);
 
-        // Step 4: Create and link program
         const program = gl.createProgram();
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
         gl.linkProgram(program);
         gl.useProgram(program);
 
-        // Step 5: Set up attributes and uniforms
-        const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+        // Create buffers for cube vertices and colors
         const positionBuffer = gl.createBuffer();
-        const positionData = new Float32Array([
-            -0.5, -0.5,  // Vertex 1
-             0.5, -0.5,  // Vertex 2
-             0.5,  0.5,  // Vertex 3
-            -0.5, -0.5,  // Vertex 4
-             0.5, -0.5,  // Vertex 5
-             0.5,  0.5   // Vertex 6
-        ]);
-
-        // Step 6: Create and bind buffers
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, positionData, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(positionAttributeLocation);
-        gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.bufferData(gl.ARRAY_BUFFER, cubeVertices, gl.STATIC_DRAW);
 
-        // Step 7: Rendering loop
+        const colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, cubeColors, gl.STATIC_DRAW);
+
+        // Create a buffer for cube indices
+        const indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cubeIndices, gl.STATIC_DRAW);
+
+        // Specify attribute and uniform locations
+        const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+        const colorAttributeLocation = gl.getAttribLocation(program, 'a_color');
+        const viewProjectionMatrixLocation = gl.getUniformLocation(program, 'u_viewprojectionMatrix');
+
+        // Set up attribute pointers
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.enableVertexAttribArray(positionAttributeLocation);
+        gl.vertexAttribPointer(positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.enableVertexAttribArray(colorAttributeLocation);
+        gl.vertexAttribPointer(colorAttributeLocation, 4, gl.FLOAT, false, 0, 0);
+
+        // Set up a perspective projection matrix
+        const projectionMatrix = mat4.create();
+        const fieldOfView = Math.PI / 4; // 45 degrees
+        const aspect = canvas.width / canvas.height;
+        const zNear = 0.1;
+        const zFar = 100.0;
+        mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+        
+        // Set up the view matrix (camera position and orientation)
+        const viewMatrix = mat4.create();
+        const cameraPosition = vec3.fromValues(2.0, 2.0, 5.0); // Adjust the camera position
+        const targetPosition = vec3.fromValues(0.0, 0.0, 0.0); // Point the camera at the origin
+        const upVector = vec3.fromValues(0.0, 1.0, 0.0); // Define the up vector
+        mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+
+        // Combine the view matrix with the projection matrix
+        const viewProjectionMatrix = mat4.create();
+        mat4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
+
+        // Pass the viewProjectionMatrix to your shaders as a uniform
+        gl.uniformMatrix4fv(viewProjectionMatrixLocation, false, viewProjectionMatrix);
+
+        // Rendering loop
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        const startTime = performance.now();
+        gl.enable(gl.DEPTH_TEST);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        
+        // Variable for animation
+        let d = 0;
+        const dUniformLocation = gl.getUniformLocation(program, 'u_d');
 
         function render() {
-            const currentTime = performance.now();
-            const elapsedTime = (currentTime - startTime) / 1000.0; // Convert to seconds
-
-            // Pass the elapsed time to the fragment shader as a uniform
-            const timeUniformLocation = gl.getUniformLocation(program, 'u_time');
-            gl.uniform1f(timeUniformLocation, elapsedTime);
+            d += 0.01;
+            gl.uniform1f(dUniformLocation, d);
 
             // Clear canvas
             gl.clear(gl.COLOR_BUFFER_BIT);
-
-            // Draw the lines using gl.drawArrays
-            gl.drawArrays(gl.LINES, 0, 6);
+            gl.drawElements(gl.TRIANGLES, cubeIndices.length, gl.UNSIGNED_SHORT, 0);
 
             requestAnimationFrame(render);
         }
