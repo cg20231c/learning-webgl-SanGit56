@@ -18,10 +18,18 @@ CG displays 3D geometry to 2D image. IP processes 2D image to different forms of
 Shaders run in GPU. The CPU part (JS code) only prepare string code and compile the data. The one who draws/renders the data is GPU. Vertex shader requires gl_Position, fragment shader requires gl_Frag_Color. Number 2, 3, 4 on vector or matrix data represents dimension. Precision config should declared in fragment shader. Vertex shader results output in Clip Coordinates. Input to fragment shader from raster in the form of website. Shaders locate camera in origin (0, 0). Face towards negative z axis
 
 ### Shading Language
-1. c-like language
+1. C-like language
 2. Nvidia Cg
 3. Microsoft HLSL
 
 ### Vertex Shader Execution
 1. JS app and rasterizer are where the fragment shader is.
 2. Graphics rendered sequentially
+
+## Linear Algebra
+1. Scalar multiplication: av
+2. Vector addition: u + v
+3. (linear vector space) v = u + 2w - 3r
+4. Affine space = point + linear vector space
+5. Parametric -> x(a) = ax1 + (1 - a)x0
+6. Parametric -> y(a) = ay1 + (1 - a)y0
